@@ -49,7 +49,7 @@ class Evaluator(object):
 
             method = 'csls_knn_10'
             # init translation
-            init_trans, top_scores = BI_translation(src_lang,query_ids,method,all_emb)
+            init_trans, top_scores = BI_translation(src_lang,query_ids,method,all_emb, cuda=self.params.cuda)
 
             for inf_met in self.params.multilingual_inference_method:
                 logger.info('\n\nMultilingual inference method: {}\n\n'.format(inf_met))
@@ -57,7 +57,8 @@ class Evaluator(object):
                 # improve source word representation, and re-translate
                 if inf_met != 'BI':
                     updated_trans, used_langs = update_translation_for_all_langs(
-                        self.params.langs, src_lang, query_ids, all_emb, init_trans, method, inf_met, top_scores)
+                        self.params.langs, src_lang, query_ids, all_emb, init_trans, method, inf_met,
+                        top_scores, cuda=self.params.cuda)
                 else:
                     used_langs = None
                     updated_trans = init_trans

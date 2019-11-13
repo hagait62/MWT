@@ -13,7 +13,7 @@ from ..utils import get_nn_avg_dist
 logger = getLogger()
 
 
-def translation(emb1,emb2,method,query_ids,improved_query=None):
+def translation(emb1,emb2,method,query_ids,improved_query=None,cuda=False):
 
     # normalize word embeddings
     emb1 = emb1 / emb1.norm(2, 1, keepdim=True).expand_as(emb1)
@@ -21,15 +21,19 @@ def translation(emb1,emb2,method,query_ids,improved_query=None):
     sorted_query_keys = sorted(query_ids.keys())
 
     if improved_query is None:
-        query = emb1[sorted_query_keys].cuda()
+        query = emb1[sorted_query_keys]
+        if cuda:
+            query = query.cuda()
     else:
-        improved_query = improved_query.cuda()
+        if cuda:
+            improved_query = improved_query.cuda()
         query = improved_query / improved_query.norm(2, 1, keepdim=True).expand_as(
             improved_query)
 
     # nearest neighbors
     if method == 'nn':
-        emb2 = emb2.cuda()
+        if cuda:
+            emb2 = emb2.cuda()
         scores = query.mm(emb2.transpose(0, 1)).cpu()
 
     # contextual dissimilarity measure
@@ -43,7 +47,8 @@ def translation(emb1,emb2,method,query_ids,improved_query=None):
         average_dist1 = torch.from_numpy(average_dist1).type_as(emb1)
         average_dist2 = torch.from_numpy(average_dist2).type_as(emb2)
         # queries / scores
-        emb2 = emb2.cuda()
+        if cuda:
+            emb2 = emb2.cuda()
         scores = query.mm(emb2.transpose(0, 1)).cpu()
         scores.mul_(2)
         scores.sub_(average_dist1[sorted_query_keys][:, None] + average_dist2[None, :])
@@ -54,12 +59,12 @@ def translation(emb1,emb2,method,query_ids,improved_query=None):
     top_scores, top_matches = scores.max(1)
     return top_matches.cpu(), top_scores.cpu()
 
-def BI_translation(src_lang,query_ids,method,all_emb):
+def BI_translation(src_lang,query_ids,method,all_emb,cuda=False):
     '''
     return top ids, and scores of BI translation to all languages. 
     '''
     logger.info('translate BI translation...')
-    init_trans = {tgt: translation(all_emb[src_lang], emb, method, query_ids)
+    init_trans = {tgt: translation(all_emb[src_lang], emb, method, query_ids, cuda=cuda)
                   for tgt, emb in all_emb.items() if tgt != src_lang}
     top_scores = {l2: x[1] for l2, x in init_trans.items()}
     init_trans = {l2: x[0] for l2, x in init_trans.items()}
@@ -69,7 +74,8 @@ def BI_translation(src_lang,query_ids,method,all_emb):
     logger.info('finish BI for source lang: {}, method: {}'.format(src_lang, method))
     return init_trans, top_scores
 
-def update_translation_for_all_langs(lang_list,src_lang,query_ids,all_emb,init_trans,method,inf_met,scores_dict):
+def update_translation_for_all_langs(lang_list,src_lang,query_ids,all_emb,init_trans,method,inf_met,
+                                     scores_dict, cuda=False):
     # re-arrange languages with src_lang first
     langs_wo_src = [x for x in lang_list if x != src_lang]
     new_lang_list = [src_lang] + langs_wo_src
@@ -105,7 +111,8 @@ def update_translation_for_all_langs(lang_list,src_lang,query_ids,all_emb,init_t
         improved_emb_query = improved_emb_query/(langs_weights.sum(dim=0,keepdim=True).t())
 
         # re-translate using multilingual information
-        updated_trans[tgt_lang], _ = translation(all_emb[src_lang], all_emb[tgt_lang], method,query_ids, improved_query=improved_emb_query)
+        updated_trans[tgt_lang], _ = translation(all_emb[src_lang], all_emb[tgt_lang], method,query_ids,
+                                                 improved_query=improved_emb_query, cuda=cuda)
     return updated_trans, used_langs_ids
 
 def get_shifted_ids_of_used_langs(mask,src_lang,trans_aux_ids,lang_list):
@@ -129,8 +136,12 @@ def compute_mask(inf_met,mask,scores_wo_tgt,tgt_scores):
 
 def mask_NT(scores_wo_tgt,mask):
     # use language with maximum score
-    max_score = scores_wo_tgt.max(dim=0)[0]
-    mask[1:] = (scores_wo_tgt == max_score).float()
+    mask[1:] = 0
+    max_score, argmax_score = scores_wo_tgt.max(dim=0)
+    mask[1 + argmax_score, torch.arange(0, mask.shape[1]).long()] = 1.0
+    # max_score = scores_wo_tgt.max(dim=0)[0]
+    # mask[1:] = (scores_wo_tgt == max_score).float()
+
     # number of langs=2: src, aux
     assert all(mask.sum(0) == 2)
 
