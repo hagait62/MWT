@@ -1,7 +1,7 @@
 ## Multilingual Word Translation
 This repo contains the source code for our paper:
 
-[**Multilingual word translation using auxiliary languages**]()
+[**Multilingual word translation using auxiliary languages**](https://www.aclweb.org/anthology/D19-1134.pdf)
 <br>
 Hagai Taitelbaum,
 [Gal Chechik](https://chechiklab.biu.ac.il/~gal/),
@@ -9,14 +9,12 @@ Hagai Taitelbaum,
 <br>
 EMNLP 2019
 <br>
-[bibtex]()
-
-[comment]: # (todo: fix links when available)
+[bibtex](https://www.aclweb.org/anthology/D19-1134.bib)
 
 (built over MUSE implementation, https://github.com/facebookresearch/MUSE)
 
 ## Environment
-For installing the appropriate environment with conda, run the following commands:
+For installing the appropriate environment with conda, run the following commands (with anaconda3):
 ```
 conda create --name mwt_env python=3.6
 conda activate mwt_env
