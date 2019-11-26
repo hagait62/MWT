@@ -16,14 +16,17 @@ EMNLP 2019
 ## Environment
 For installing the appropriate environment with conda, run the following commands (with anaconda3):
 ```
+git clone https://github.com/hagait62/MWT.git
+cd MWT
 conda create --name mwt_env python=3.6
 conda activate mwt_env
 conda config --append channels conda-forge
 conda config --append channels pytorch
+conda config --append channels anaconda
 conda install --yes --file requirements.txt
 ```
 
-## Dependencies
+## Main dependencies (already installed by requirements.txt)
 * Python 3.6 with [NumPy](http://www.numpy.org/)/[SciPy](https://www.scipy.org/)
 * [PyTorch](http://pytorch.org/)
 * [Faiss](https://github.com/facebookresearch/faiss) (recommended) for fast nearest neighbor search (CPU or GPU).
